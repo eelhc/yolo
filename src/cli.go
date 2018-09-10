@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
+	"sync"
 )
 
 func ExecuteCommand(command string) (string, string, error) {
@@ -28,26 +30,34 @@ func ExecuteCommand(command string) (string, string, error) {
 	stdout := io.MultiWriter(os.Stdout, &stdoutBuf)
 	stderr := io.MultiWriter(os.Stderr, &stderrBuf)
 
-	if err := cmd.Start(); err != nil {
-		return "", "", err
-	}
+	err = cmd.Start()
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
 	go func() {
 		_, errStdout = io.Copy(stdout, stdoutIn)
+		wg.Done()
 	}()
 
 	go func() {
 		_, errStderr = io.Copy(stderr, stderrIn)
+		wg.Done()
 	}()
 
-	if err := cmd.Wait(); err != nil {
-		return "", "", err
-	}
+	wg.Wait()
 
 	outStr, errStr := string(stdoutBuf.Bytes()), string(stderrBuf.Bytes())
 
-	return outStr, errStr, nil
+	if err != nil {
+		return outStr, errStr, err
+	}
 
+	if err := cmd.Wait(); err != nil {
+		return outStr, errStr, err
+	}
+
+	return outStr, errStr, nil
 }
 
 func CurrentGitBranch() string {
@@ -64,7 +74,7 @@ func CurrentGitBranch() string {
 		return ""
 	}
 
-	return stdout.String()
+	return strings.Trim(stdout.String(), "\n")
 }
 
 func WorkingDir() string {

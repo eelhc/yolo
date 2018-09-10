@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/azer/yolo/src"
+	"github.com/eelhc/yolo/src"
 )
 
 func main() {
